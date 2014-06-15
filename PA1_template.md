@@ -11,13 +11,6 @@ library(plyr)
 
 ```r
 unzip("activity.zip")
-```
-
-```
-## Warning: error 1 in extracting from zip file
-```
-
-```r
 activity.data <- read.csv("activity.csv")
 ```
 
