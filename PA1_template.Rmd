@@ -1,14 +1,11 @@
 # Reproducible Research: Peer Assessment 1
 
 ## Load Libraries
-```{r, echo=TRUE}
+```{r, echo=FALSE}
 library(data.table)
 library(plyr)
-<<<<<<< HEAD
 library(lattice)
 library(scales)
-=======
->>>>>>> FETCH_HEAD
 ```
 
 ## Data Loading
