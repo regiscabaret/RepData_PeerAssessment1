@@ -5,11 +5,12 @@
 library(data.table)
 library(plyr)
 library(lattice)
+library(scales)
 ```
 
 ## Data Loading
 ```{r, echo=TRUE}
-unzip("activity.zip")
+if(! file.exists("activity.csv")) { unzip("activity.zip") }
 activity.data <- read.csv("activity.csv")
 ```
 
@@ -17,6 +18,8 @@ activity.data <- read.csv("activity.csv")
 Convert the date field to Date class and remove records where steps is NA or 0
 ```{r, echo=TRUE}
 activity.data$date <- as.Date(activity.data$date)
+activity.data$hr <- activity.data$interval %/% 100
+activity.data$min <- activity.data$interval %% 100
 activity.data.wo.na <- activity.data[! is.na(activity.data$steps),]
 ```
 ### Summarize 
@@ -27,7 +30,8 @@ avg.steps.by.interval <- ddply(activity.data.wo.na,.(interval),summarize,steps=m
 
 ### Histogram of total steps taken per day
 ```{r,fig.width=7, fig.height=6, echo=TRUE}
-hist(ttl.steps.by.date$steps,col=4,main="",xlab="Number of Steps Taken per Day",breaks=25)
+hist(ttl.steps.by.date$steps,col=4,main="",xlab="Number of Steps Taken per Day",breaks=25,xaxt="n")
+axis(side=1, at=axTicks(1), labels=formatC(axTicks(1), format="d", big.mark=','))
 ```
 
 ## What is mean total number of steps taken per day?
@@ -42,7 +46,8 @@ median(ttl.steps.by.date$steps)
 
 ## What is the average daily activity pattern?
 ```{r, fig.width=7, fig.height=6, echo=TRUE}
-plot(avg.steps.by.interval,type="l",ylab="Average number of steps")
+plot(avg.steps.by.interval,type="l",ylab="Average number of steps",xaxt="n",xlab="Time of the day")
+axis(side=1, at=(avg.steps.by.interval$interval %/% 100 * 100),labels=paste(avg.steps.by.interval$interval %/% 100,":00",sep=""))
 ```
 
 ## Imputing missing values
@@ -55,6 +60,7 @@ Generate data table including NA
 activity.data.tb <- data.table(activity.data)
 ```
 Add new column containing mean of the interval across all days
+
 Note: Chose interval means rather than day because some day have no data at all, hence returning a mean of NA
 ```{r, echo=TRUE}
 activity.data.tb <- activity.data.tb[,avgsteps:=mean(steps,na.rm=TRUE),by=interval]
@@ -66,12 +72,15 @@ rm(activity.data.tb)
 activity.data.fix.na[is.na(activity.data.fix.na$steps),]$steps <- activity.data.fix.na[is.na(activity.data.fix.na$steps),]$avgsteps
 ```
 Histogram of Number of Steps by day following same process as earlier on
+
 Note: Putting both plots next to each other to more easily compare
 ```{r, fig.width=15, fig.height=6, echo=TRUE}
 ttl.steps.by.date.fix.na <- ddply(activity.data.fix.na,.(date),summarize,steps=sum(steps,rm.na=TRUE))
 par(mfrow=c(1,2))
-hist(ttl.steps.by.date$steps,col=3,xlab="Number of Steps Taken per Day",breaks=25,main="Without NA replaced",ylim=c(0,20),xlim=c(0,25000))
-hist(ttl.steps.by.date.fix.na$steps,col=4,xlab="Number of Steps Taken per Day",breaks=25,main="With NA replaced",ylim=c(0,20),xlim=c(0,25000))
+hist(ttl.steps.by.date$steps,col=3,xlab="Number of Steps Taken per Day",breaks=25,main="Without NA replaced",ylim=c(0,20),xlim=c(0,25000),xaxt="n")
+axis(side=1, at=axTicks(1), labels=formatC(axTicks(1), format="d", big.mark=','))
+hist(ttl.steps.by.date.fix.na$steps,col=4,xlab="Number of Steps Taken per Day",breaks=25,main="With NA replaced",ylim=c(0,20),xlim=c(0,25000),xaxt="n")
+axis(side=1, at=axTicks(1), labels=formatC(axTicks(1), format="d", big.mark=','))
 ```
 Average Number of Steps per Day when NA are replaced with average steps for each interval
 ```{r, echo=TRUE}
@@ -96,9 +105,9 @@ activity.data.fix.na$daycat <- as.factor(activity.data.fix.na$daycat)
 Plot the steps by day category using Lattice plotting system
 ```{r, echo=TRUE, fig.width=10, fig.height=6}
 avg.nb.steps.per.interval.per.daycat <- ddply(activity.data.fix.na,.(interval,daycat),summarize,avgsteps=mean(steps))
-xyplot(avgsteps ~ interval | daycat,data=avg.nb.steps.per.interval.per.daycat,type="l",layout=c(1,2),ylab="Number of steps")
+xyplot(avgsteps ~ interval | daycat,data=avg.nb.steps.per.interval.per.daycat,type="l",layout=c(1,2),ylab="Number of steps",xlab="Time of the day",scales=list(at=avg.nb.steps.per.interval.per.daycat$interval %/% 200 * 200,labels=paste(avg.nb.steps.per.interval.per.daycat$interval %/% 200 * 2,":00",sep="")))
 ```
 <B>Findings:</B>
-* This person walks more earlier in the morning on week days
+* This person starts walking earlier in the morning on week days
 * A higher peak mid morning may denote his commuting time
 * On week-ends, he probably gets up later than weeks days but is more active in the afternoon
