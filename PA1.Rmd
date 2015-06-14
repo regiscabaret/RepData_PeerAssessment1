@@ -4,8 +4,9 @@
 ```{r, echo=FALSE}
 library(data.table)
 library(plyr)
-library(lattice)
+library(ggplot2)
 library(scales)
+library(gridExtra)
 ```
 
 ## Data Loading
@@ -14,8 +15,8 @@ if(! file.exists("activity.csv")) { unzip("activity.zip") }
 activity.data <- read.csv("activity.csv")
 ```
 
-### Data Cleaning
-Convert the date field to Date class and remove records where steps is NA or 0
+### Data Cleansing
+Convert the date field to Date class and remove records where steps is NA
 ```{r, echo=TRUE}
 activity.data$date <- as.Date(activity.data$date)
 activity.data$hr <- activity.data$interval %/% 100
@@ -30,38 +31,40 @@ avg.steps.by.interval <- ddply(activity.data.wo.na,.(interval),summarize,steps=m
 
 ### Histogram of total steps taken per day
 ```{r,fig.width=7, fig.height=6, echo=TRUE}
-hist(ttl.steps.by.date$steps,col=4,main="",xlab="Number of Steps Taken per Day",breaks=25,xaxt="n")
-axis(side=1, at=axTicks(1), labels=formatC(axTicks(1), format="d", big.mark=','))
+ggplot(ttl.steps.by.date, aes(ttl.steps.by.date$steps)) + geom_histogram(breaks=seq(min(ttl.steps.by.date$steps),max(ttl.steps.by.date$steps),by =500)) + labs(x="Number of Steps Taken per Day",y="Frequency",title="Histogram of Number of Steps Taken per Day")
 ```
 
 ## What is mean total number of steps taken per day?
-### Average Number of Steps per Day
 ```{r, echo=TRUE}
-mean(ttl.steps.by.date$steps)
+ttl.steps.by.date.mean <- mean(ttl.steps.by.date$steps)
 ```
+Average Number of Steps per Day is **`r format(ttl.steps.by.date.mean,big.mark=",",decimal.mark=".")`**
+
 ### Median Number of Steps per Day
 ```{r, echo=TRUE}
-median(ttl.steps.by.date$steps)
+ttl.steps.by.date.median <- median(ttl.steps.by.date$steps)
 ```
+Median Number of Steps per Day is **`r format(ttl.steps.by.date.median,big.mark=",",decimal.mak=".")`**
 
 ## What is the average daily activity pattern?
 ```{r, fig.width=7, fig.height=6, echo=TRUE}
-plot(avg.steps.by.interval,type="l",ylab="Average number of steps",xaxt="n",xlab="Time of the day")
-axis(side=1, at=(avg.steps.by.interval$interval %/% 100 * 100),labels=paste(avg.steps.by.interval$interval %/% 100,":00",sep=""))
+ggplot(avg.steps.by.interval,aes(x=avg.steps.by.interval$interval,y=avg.steps.by.interval$steps)) + geom_line(stat="identity") + labs(y="Average number of steps",x="Time of the day")
 ```
 
 ## Imputing missing values
 ### Number of records with missing number of steps
 ```{r, echo=TRUE}
-nrow(activity.data[is.na(activity.data$steps),])
+nb.rows.missing.steps <- nrow(activity.data[is.na(activity.data$steps),])
 ```
+The number of records with missing number of steps is **`r nb.rows.missing.steps`**
+
 Generate data table including NA
 ```{r, echo=TRUE}
 activity.data.tb <- data.table(activity.data)
 ```
 Add new column containing mean of the interval across all days
 
-Note: Chose interval means rather than day because some day have no data at all, hence returning a mean of NA
+**Note**: I chose as interval the mean by interval rather than then mean by day because some day have no data at all, hence returning a mean of NA
 ```{r, echo=TRUE}
 activity.data.tb <- activity.data.tb[,avgsteps:=mean(steps,na.rm=TRUE),by=interval]
 ```
@@ -71,27 +74,27 @@ activity.data.fix.na <- as.data.frame(activity.data.tb)
 rm(activity.data.tb)
 activity.data.fix.na[is.na(activity.data.fix.na$steps),]$steps <- activity.data.fix.na[is.na(activity.data.fix.na$steps),]$avgsteps
 ```
-Histogram of Number of Steps by day following same process as earlier on
 
-Note: Putting both plots next to each other to more easily compare
+**Note:** I am placing both plots next to each other to more easily compare
 ```{r, fig.width=15, fig.height=6, echo=TRUE}
 ttl.steps.by.date.fix.na <- ddply(activity.data.fix.na,.(date),summarize,steps=sum(steps,rm.na=TRUE))
-par(mfrow=c(1,2))
-hist(ttl.steps.by.date$steps,col=3,xlab="Number of Steps Taken per Day",breaks=25,main="Without NA replaced",ylim=c(0,20),xlim=c(0,25000),xaxt="n")
-axis(side=1, at=axTicks(1), labels=formatC(axTicks(1), format="d", big.mark=','))
-hist(ttl.steps.by.date.fix.na$steps,col=4,xlab="Number of Steps Taken per Day",breaks=25,main="With NA replaced",ylim=c(0,20),xlim=c(0,25000),xaxt="n")
-axis(side=1, at=axTicks(1), labels=formatC(axTicks(1), format="d", big.mark=','))
+plot1 <- ggplot(ttl.steps.by.date, aes(ttl.steps.by.date$steps)) + geom_histogram(binwidth=500) + labs(x="Number of Steps Taken per Day",title="Without NA replaced")
+plot2 <- ggplot(ttl.steps.by.date.fix.na, aes(ttl.steps.by.date.fix.na$steps)) + geom_histogram(binwidth=500) + labs(x="Number of Steps Taken per Day",title="With NA replaced by the Mean of Respective Interval")
+grid.arrange(plot1,plot2)
 ```
 Average Number of Steps per Day when NA are replaced with average steps for each interval
 ```{r, echo=TRUE}
-mean(ttl.steps.by.date.fix.na$steps)
+ttl.steps.by.date.fix.na.mean <- mean(ttl.steps.by.date.fix.na$steps)
 ```
-Median Number of Steps per Day when NA are replaced with average steps for each interval
+Average Number of Steps per Day when NA are replaced with average steps for each interval: **`r format(ttl.steps.by.date.fix.na.mean,big.mark=",",decimal.mark=".")`**
+
 ```{r, echo=TRUE}
-median(ttl.steps.by.date.fix.na$steps)
+ttl.steps.by.date.fix.na.median <- median(ttl.steps.by.date.fix.na$steps)
 ```
-<B>Findings: </B>
-* In this dataset, fixing NA doesn't affect the median total number of steps taken per day as NA are only found across an entire day rather
+Median Number of Steps per Day when NA are replaced with average steps for each interval: **`r format(ttl.steps.by.date.fix.na.median,big.mark=",",decimal.mark=".")`**
+
+**Findings:**
+* In this dataset, fixing NA doesn't affect the median total number of steps taken per day as NA are only found across an entire day rather than in specific interval
 * The frequency at the mean is higher, which makes sense since we have replaced NA with the average number of steps, hence creating more data at the mean. Other buckets are unchanged.
 
 # Weekdays vs Weekends
@@ -108,7 +111,7 @@ library(lattice)
 avg.nb.steps.per.interval.per.daycat <- ddply(activity.data.fix.na,.(interval,daycat),summarize,avgsteps=mean(steps))
 xyplot(avgsteps ~ interval | daycat,data=avg.nb.steps.per.interval.per.daycat,type="l",layout=c(1,2),ylab="Number of steps",xlab="Time of the day",scales=list(at=avg.nb.steps.per.interval.per.daycat$interval %/% 200 * 200,labels=paste(avg.nb.steps.per.interval.per.daycat$interval %/% 200 * 2,":00",sep="")))
 ```
-<B>Findings:</B>
+**Findings:**
 * This person starts walking earlier in the morning on week days
 * A higher peak mid morning may denote his commuting time
-* On week-ends, he probably gets up later than weeks days but is more active in the afternoon
+* On week-ends, he probably gets up later than week days but is more active in the afternoon
