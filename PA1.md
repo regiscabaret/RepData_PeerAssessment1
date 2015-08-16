@@ -1,7 +1,14 @@
-# Reproducible Research: Peer Assessment 1
+# Title: Reproducible Research: Peer Assessment 1
 
 ## Load Libraries
 
+```
+## Warning: package 'gridExtra' was built under R version 3.1.2
+```
+
+```
+## Loading required package: grid
+```
 
 ## Data Loading
 
@@ -17,13 +24,14 @@ Convert the date field to Date class and remove records where steps is NA
 activity.data$date <- as.Date(activity.data$date)
 activity.data$hr <- activity.data$interval %/% 100
 activity.data$min <- activity.data$interval %% 100
+activity.data$time <- format(strptime(sprintf("%04d", activity.data$interval), format="%H%M"),format="%H:%M")
 activity.data.wo.na <- activity.data[! is.na(activity.data$steps),]
 ```
 ### Summarize 
 
 ```r
 ttl.steps.by.date <- ddply(activity.data.wo.na,.(date),summarize,steps=sum(steps,rm.na=TRUE))
-avg.steps.by.interval <- ddply(activity.data.wo.na,.(interval),summarize,steps=mean(steps))
+avg.steps.by.time <- ddply(activity.data.wo.na,.(time),summarize,steps=mean(steps))
 ```
 
 ### Histogram of total steps taken per day
@@ -32,7 +40,7 @@ avg.steps.by.interval <- ddply(activity.data.wo.na,.(interval),summarize,steps=m
 ggplot(ttl.steps.by.date, aes(ttl.steps.by.date$steps)) + geom_histogram(breaks=seq(min(ttl.steps.by.date$steps),max(ttl.steps.by.date$steps),by =500)) + labs(x="Number of Steps Taken per Day",y="Frequency",title="Histogram of Number of Steps Taken per Day")
 ```
 
-<img src="PA1_files/figure-html/unnamed-chunk-5.png" title="plot of chunk unnamed-chunk-5" alt="plot of chunk unnamed-chunk-5" width="672" />
+![plot of chunk unnamed-chunk-5](PA1_files/figure-html/unnamed-chunk-5.png) 
 
 ## What is mean total number of steps taken per day?
 
@@ -51,17 +59,26 @@ Median Number of Steps per Day is **10,766**
 ## What is the average daily activity pattern?
 
 ```r
-ggplot(avg.steps.by.interval,aes(x=avg.steps.by.interval$interval,y=avg.steps.by.interval$steps)) + geom_line(stat="identity") + labs(y="Average number of steps",x="5-minute interval")
+max.steps.time <- avg.steps.by.time[which.max(avg.steps.by.time$steps),]$time
+max.steps <- max(avg.steps.by.time$steps)
+ggplot(avg.steps.by.time,aes(x=avg.steps.by.time$time,y=avg.steps.by.time$steps,group = 1)) + 
+  geom_line(stat="identity") + 
+  ggtitle("Average number of steps by 5-minutes interval") +
+  labs(y="Average number of steps",x="Time of the Day") +
+  scale_x_discrete(breaks=c(activity.data[which(activity.data$interval %% 100 == 0),]$time,max.steps.time)) +
+  scale_y_continuous(limits=c(0,225),breaks=c(seq(0,225,25),max.steps),labels=function(n){round(n,0)}) +
+  theme(axis.text.x = element_text(face=c(rep("plain",24),"bold"),angle=90,colour=c(rep("grey",24),"blue")), 
+        axis.text.y = element_text(face=c(rep("plain",10),"bold"),colour=c(rep("grey",10),"blue")),
+        panel.grid.major.x= element_line(colour = c(rep("white",24),"blue"),linetype=c(rep(1,24),2)),
+        panel.grid.major.y= element_line(colour = c(rep("white",10),"blue"),linetype=c(rep(1,10),2)),
+        plot.title = element_text(face="bold")
+        )
 ```
 
-<img src="PA1_files/figure-html/unnamed-chunk-8.png" title="plot of chunk unnamed-chunk-8" alt="plot of chunk unnamed-chunk-8" width="672" />
+![plot of chunk unnamed-chunk-8](PA1_files/figure-html/unnamed-chunk-8.png) 
 
 ### Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?
-
-```r
-max.steps.interval <- avg.steps.by.interval[which.max(avg.steps.by.interval$steps),]$interval
-```
-The **835** interval contains on average the maximum number of steps
+The **835** interval contains on average the maximum number of steps (**206.2** steps)
 
 ## Imputing missing values
 ### Number of records with missing number of steps
@@ -100,12 +117,20 @@ activity.data.fix.na[is.na(activity.data.fix.na$steps),]$steps <- activity.data.
 
 ```r
 ttl.steps.by.date.fix.na <- ddply(activity.data.fix.na,.(date),summarize,steps=sum(steps,rm.na=TRUE))
-plot1 <- ggplot(ttl.steps.by.date, aes(ttl.steps.by.date$steps)) + geom_histogram(binwidth=500) + labs(x="Number of Steps Taken per Day",title="Without NA replaced") + geom_vline(color="blue",xintercept = mean(ttl.steps.by.date$steps),lwd=2) + ylim(0,15)
-plot2 <- ggplot(ttl.steps.by.date.fix.na, aes(ttl.steps.by.date.fix.na$steps)) + geom_histogram(binwidth=500) + labs(x="Number of Steps Taken per Day",title="With NA replaced by the Mean of Respective Interval") + geom_vline(color="blue",xintercept = mean(ttl.steps.by.date.fix.na$steps),lwd=2) + ylim(0,15)
+plot1 <- ggplot(ttl.steps.by.date, aes(ttl.steps.by.date$steps)) + 
+  geom_histogram(binwidth=500) + 
+  labs(x="Number of Steps Taken per Day",title="Without NA replaced") + 
+  geom_vline(color="blue",xintercept = mean(ttl.steps.by.date$steps),lwd=2) + 
+  ylim(0,15)
+plot2 <- ggplot(ttl.steps.by.date.fix.na, aes(ttl.steps.by.date.fix.na$steps)) + 
+  geom_histogram(binwidth=500) + 
+  labs(x="Number of Steps Taken per Day",title="With NA replaced by the Mean of Respective Interval") + 
+  geom_vline(color="blue",xintercept = mean(ttl.steps.by.date.fix.na$steps),lwd=2) + 
+  ylim(0,15)
 grid.arrange(plot1,plot2)
 ```
 
-<img src="PA1_files/figure-html/unnamed-chunk-14.png" title="plot of chunk unnamed-chunk-14" alt="plot of chunk unnamed-chunk-14" width="1440" />
+![plot of chunk unnamed-chunk-13](PA1_files/figure-html/unnamed-chunk-13.png) 
 Average Number of Steps per Day when NA are replaced with average steps for each interval
 
 ```r
@@ -136,11 +161,24 @@ activity.data.fix.na$daycat <- as.factor(activity.data.fix.na$daycat)
 Plot the steps by day category using Lattice plotting system
 
 ```r
-# avg.nb.steps.per.interval.per.daycat <- ddply(activity.data.fix.na,.(interval,daycat),summarize,avgsteps=mean(steps))
-ggplot(activity.data.fix.na, aes(x=activity.data.fix.na$interval,y=activity.data.fix.na$steps)) + stat_summary(fun.y="mean", geom="line") + facet_grid(daycat ~ .) + labs(x="Interval",y="Average Number of Steps",title="Average Number of Steps by Interval per Day Category")
+ggplot() + 
+  stat_summary(fun.y="mean",data=activity.data.fix.na[activity.data.fix.na$daycat=="weekday",],aes(
+                 x=activity.data.fix.na[activity.data.fix.na$daycat=="weekday",]$time,
+                 y=activity.data.fix.na[activity.data.fix.na$daycat=="weekday",]$steps,
+                 group=1, colour="weekday"),geom="line") +
+  stat_summary(fun.y="mean",data=activity.data.fix.na[activity.data.fix.na$daycat=="weekend",],aes(
+                 x=activity.data.fix.na[activity.data.fix.na$daycat=="weekend",]$time,
+                 y=activity.data.fix.na[activity.data.fix.na$daycat=="weekend",]$steps,
+                 group=1, colour="weekend"),geom="line") +
+  scale_x_discrete(breaks=c(activity.data.fix.na[which(activity.data.fix.na$interval %% 100 == 0),]$time)) +
+  labs(x="Time of the Day",
+       y="Average Number of Steps",
+       title="Average Number of Steps by Interval per Day Category",
+       colour="Day category") +
+  theme(axis.text.x = element_text(angle=90))
 ```
 
-<img src="PA1_files/figure-html/unnamed-chunk-18.png" title="plot of chunk unnamed-chunk-18" alt="plot of chunk unnamed-chunk-18" width="960" />
+![plot of chunk unnamed-chunk-17](PA1_files/figure-html/unnamed-chunk-17.png) 
 **Findings:**
 
 1. This person is active earlier on week-ends but has a higher peak of activity on week-days, in mid morning
